@@ -97,12 +97,21 @@ def sweep_power_gating():
     return combos
 
 
-def best_safe(candidates, n_seeds: int = N_SEEDS):
-    """Pick the candidate with highest responsiveness among those that are safe.
+# A config that barely spikes is trivially "safe" because it does no work. Such
+# a configuration is not a fair opponent, and selecting it would manufacture a
+# strawman. We require a baseline to actually compute before we count it.
+DEGENERATE_RESPONSIVENESS = 1.0
 
-    Safe means brownout_frac <= BROWNOUT_TOLERANCE. If none qualify, fall back to
-    the lowest-brownout candidate so the comparison is still against that
-    baseline's most defensible setting.
+
+def best_safe(candidates, n_seeds: int = N_SEEDS):
+    """Pick the most responsive candidate that is both safe and non-degenerate.
+
+    Safe:          brownout_frac <= BROWNOUT_TOLERANCE
+    Non-degenerate: responsiveness > DEGENERATE_RESPONSIVENESS
+
+    Returns (best, n_safe, n_viable, n_total). If nothing is viable, best is
+    None: that is itself the finding, and the caller should report it rather
+    than fall back to comparing against a policy that does nothing.
     """
     scored = []
     for name, factory in candidates:
@@ -110,11 +119,10 @@ def best_safe(candidates, n_seeds: int = N_SEEDS):
         scored.append((name, factory, res,
                        float(res["brownout_frac"].mean()),
                        float(res["responsiveness"].mean())))
-    safe = [s for s in scored if s[3] <= BROWNOUT_TOLERANCE]
-    pool = safe if safe else scored
-    key = (lambda s: -s[4]) if safe else (lambda s: s[3])
-    pool = sorted(pool, key=key)
-    return pool[0], len(safe), len(scored)
+    safe = [c for c in scored if c[3] <= BROWNOUT_TOLERANCE]
+    viable = [c for c in safe if c[4] > DEGENERATE_RESPONSIVENESS]
+    best = max(viable, key=lambda c: c[4]) if viable else None
+    return best, len(safe), len(viable), len(scored)
 
 
 # ---------------------------------------------------------------- main
@@ -148,20 +156,37 @@ def main() -> None:
 
     for label, sweep in [("static-dvfs", sweep_static_dvfs()),
                          ("power-gating", sweep_power_gating())]:
-        (name, factory, res, bo, resp), n_safe, n_total = best_safe(sweep)
-        print(f"\n{label}: swept {n_total} configurations, "
-              f"{n_safe} met the safety tolerance")
-        print(f"  best defensible config: {name}")
-        print(f"    responsiveness {resp:.1f}, brownout {bo:.3f}")
+        best, n_safe, n_viable, n_total = best_safe(sweep)
+        print(f"\n{label}: swept {n_total} configurations")
+        print(f"  {n_safe} safe (brownout <= {BROWNOUT_TOLERANCE}), "
+              f"of which {n_viable} actually compute "
+              f"(responsiveness > {DEGENERATE_RESPONSIVENESS})")
+
+        if best is None:
+            print(f"  ** NO VIABLE CONFIGURATION. Every safe setting of {label} is")
+            print(f"     idle, and every setting that computes browns out. This is")
+            print(f"     a structural limit of the policy, not a tuning failure:")
+            print(f"     a fixed schedule must be set for either the worst case")
+            print(f"     (useless on average) or the average case (fails under")
+            print(f"     scarcity). Adaptive throttling exists to escape that.")
+            print(f"     Ours: {ours['responsiveness'].mean():.1f} responsiveness "
+                  f"at {ours['brownout_frac'].mean():.3f} brownout, "
+                  f"reserve {ours['min_reserve'].mean():.3f}.")
+            continue
+
+        name, _factory, res, bo, resp = best
+        print(f"  best viable config: {name}")
+        print(f"    responsiveness {resp:.1f}, brownout {bo:.3f}, "
+              f"min_reserve {res['min_reserve'].mean():.3f}")
 
         d, dlo, dhi = bootstrap_paired_ci(ours["responsiveness"],
                                           res["responsiveness"])
         verdict = "SIGNIFICANT" if (dlo > 0 or dhi < 0) else "not significant"
         sign = "more" if d > 0 else "less"
-        print(f"  ours vs best: {d:+.1f} responsiveness "
+        print(f"  ours vs best viable: {d:+.1f} responsiveness "
               f"[{dlo:+.1f}, {dhi:+.1f}]  ({verdict})")
         print(f"    -> adaptive-metabolic is {abs(d):.1f} spikes/event {sign} "
-              f"responsive than the\n       best safely-tuned {label}.")
+              f"responsive than\n       the best viable {label}.")
 
     print("\n" + "=" * 78)
     print("Interpretation")

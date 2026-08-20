@@ -62,8 +62,30 @@ Every figure is produced by one command with fixed seeds:
 python run.py                                  # results.png  -- single-run intuition
 python -m experiments.compare_policies         # policy_comparison.png -- 4 policies, 30 seeds, 95% CI
 python -m experiments.pareto_ablation          # pareto_ablation.png -- Pareto frontier + ablations
+python -m experiments.robustness               # bootstrap CIs + baseline-fairness sweep
 python -m benchmark.run_benchmark              # benchmark_accuracy.png -- FashionMNIST under intermittent power
 ```
+
+### Policy comparison, verbatim (30 paired seeds, mean +/- 95% CI)
+
+| policy | responsiveness | brownout_frac | min_reserve | efficiency |
+|---|---|---|---|---|
+| fixed-rate | 194.7 +/- 15.9 | **0.980** +/- 0.000 | 0.000 | 1.978 |
+| power-gating | 254.3 +/- 50.4 | 0.000 +/- 0.000 | 0.140 | 1.810 |
+| static-dvfs | **1940.8** +/- 129.0 | 0.226 +/- 0.023 | 0.000 | 1.581 |
+| **adaptive-metabolic** | 1408.4 +/- 102.7 | **0.000** +/- 0.000 | **0.225** | 1.687 |
+
+**Read this honestly.** static-dvfs is *more* responsive than ours (1941 vs 1408);
+it simply browns out 22.6% of the time and keeps no safety margin. Ours reaches
+1408 at zero brownout with the largest minimum reserve, and is 5.5x more
+responsive than power-gating at equal (zero) brownout. **We own the
+responsiveness-safety tradeoff; we do not win outright.**
+
+`experiments/robustness.py` stress-tests that claim two ways: percentile
+bootstrap CIs instead of a normal approximation (which is invalid for bounded,
+often-degenerate metrics like brownout_frac), and a sweep over each baseline's
+own parameters so the comparison runs against each baseline's *best safe*
+configuration rather than one hand-picked setting.
 
 Headline findings (see `PAPER/`):
 - Among zero-brownout policies, adaptive-metabolic is ~5.6x more responsive than

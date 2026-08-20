@@ -3,3 +3,7 @@ __pycache__/
 .DS_Store
 data/
 *.pt
+
+# private prep notes, kept out of the public tree
+STUDY.md
+PAPER/GROUP_TALK.md

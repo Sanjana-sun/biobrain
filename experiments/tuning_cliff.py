@@ -86,13 +86,26 @@ def main() -> None:
     ax[0].legend(fontsize=8)
     ax[0].grid(alpha=0.3)
 
-    ax[1].plot(bo, mr, "o-", color="#444", label="static-DVFS sweep")
-    ax[1].scatter([o_bo], [o_mr], s=110, marker="*", color="#c0392b",
-                  zorder=5, label="adaptive-metabolic")
+    # Distinguish idle configurations. Without this the idle point looks like it
+    # dominates on both axes, when in fact it achieves that by doing no work.
+    idle = resp <= 1.0
+    ax[1].plot(bo, mr, "-", color="#999", zorder=1)
+    ax[1].scatter(bo[~idle], mr[~idle], s=45, color="#444", zorder=3,
+                  label="static-DVFS (computing)")
+    ax[1].scatter(bo[idle], mr[idle], s=70, facecolors="none",
+                  edgecolors="#888", linewidths=1.6, zorder=3,
+                  label="static-DVFS (IDLE: 0 spikes)")
+    ax[1].scatter([o_bo], [o_mr], s=170, marker="*", color="#c0392b",
+                  zorder=5, label=f"adaptive ({o_resp:.0f} spikes/event)")
+    if idle.any():
+        ax[1].annotate("safe only because\nit computes nothing",
+                       xy=(bo[idle][0], mr[idle][0]),
+                       xytext=(0.22, 0.42), fontsize=7.5, color="#666",
+                       arrowprops=dict(arrowstyle="->", color="#999", lw=0.9))
     ax[1].set_xlabel("brownout fraction (lower better)")
     ax[1].set_ylabel("min reserve (higher better)")
-    ax[1].set_title("Safety plane: no static point is in the good corner")
-    ax[1].legend(fontsize=8)
+    ax[1].set_title("Safety plane: no computing static point holds a margin")
+    ax[1].legend(fontsize=7.5, loc="center right")
     ax[1].grid(alpha=0.3)
 
     fig.suptitle("The tuning cliff: why adaptive throttling is not just better "

@@ -1,0 +1,5 @@
+numpy>=1.21
+matplotlib>=3.4
+# For the FashionMNIST benchmark (benchmark/):
+torch>=2.0
+torchvision>=0.15

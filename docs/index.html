@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BioBrain — a spiking network that budgets its own energy</title>
+<meta name="description" content="A leaky integrate-and-fire spiking network powered by a glucose biofuel cell, with a metabolic regulator that scales firing rate to the energy reserve. Live simulation, running in your browser.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="wrap">
+  <p class="eyebrow">Simulation · neuromorphic computing · energy harvesting</p>
+  <h1>BioBrain</h1>
+  <p class="lede">
+    A spiking neural network powered by a glucose biofuel cell, with a regulator that
+    scales its own firing rate to the charge left in a supercapacitor. It slows down
+    instead of failing.
+  </p>
+  <p class="byline">
+    Sanjana Sri Injamuri · MS Computer Science, Northeastern University ·
+    <a href="https://github.com/Sanjana-sun/biobrain">source on GitHub</a>
+  </p>
+  <div class="callout">
+    <strong>Everything on this page is computed live in your browser.</strong>
+    The engine is a faithful port of the Python reference implementation — same
+    equations, same parameters, same update order. Nothing here is a recorded number.
+  </div>
+</header>
+
+<main class="wrap">
+
+<!-- ============================================ 1. THE PROBLEM -->
+<section>
+  <h2>1. The problem</h2>
+  <p>
+    A biofuel cell delivers tens to hundreds of microwatts, and that output fluctuates
+    with fuel concentration. A spiking network draws energy in bursts, because every
+    action potential costs something. Put them together and you get a device that
+    periodically runs out of charge mid-computation.
+  </p>
+  <p>
+    The established answers are all-or-nothing. <em>Intermittent computing</em>
+    checkpoints state and halts until power returns. <em>Power gating</em> switches the
+    load off below a threshold and on above another. <em>Static DVFS</em> picks one
+    reduced clock rate and keeps it forever. Each treats energy as a binary condition or
+    a constant chosen in advance.
+  </p>
+  <p>
+    Biological neural tissue does something different: it modulates activity. The
+    question this project asks is whether a graded, closed-loop throttle — one that reads
+    the reserve continuously and scales firing proportionally — buys anything that
+    threshold or fixed-rate control cannot.
+  </p>
+</section>
+
+<!-- ============================================ 2. MECHANISM -->
+<section>
+  <h2>2. The mechanism, running</h2>
+  <p>
+    One 60-second simulation at 1&nbsp;ms resolution, 64 leaky integrate-and-fire
+    neurons. The glucose supply carries two famine dips; six brief high-demand
+    <em>events</em> are the moments the device is supposed to respond to. Change the
+    policy and watch the reserve.
+  </p>
+
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>Policy</label>
+      <div class="segmented" id="policy-seg"></div>
+      <p class="blurb" id="policy-blurb"></p>
+    </div>
+  </div>
+
+  <div class="controls grid">
+    <div class="ctrl"><label for="s-seed">Environment seed <output id="o-seed">0</output></label>
+      <input type="range" id="s-seed" min="0" max="29" step="1" value="0"></div>
+    <div class="ctrl"><label for="s-pmax">Cell peak power <output id="o-pmax">320 µW</output></label>
+      <input type="range" id="s-pmax" min="20" max="400" step="10" value="320"></div>
+    <div class="ctrl"><label for="s-cap">Supercapacitor <output id="o-cap">2000 µJ</output></label>
+      <input type="range" id="s-cap" min="250" max="6000" step="250" value="2000"></div>
+    <div class="ctrl"><label for="s-famine">Famine depth <output id="o-famine">0.5 mM</output></label>
+      <input type="range" id="s-famine" min="0.2" max="5.5" step="0.1" value="0.5"></div>
+    <div class="ctrl" data-only="adaptive-metabolic"><label for="s-gain">Regulator gain <output id="o-gain">6.0</output></label>
+      <input type="range" id="s-gain" min="0.5" max="20" step="0.5" value="6"></div>
+    <div class="ctrl" data-only="adaptive-metabolic"><label for="s-set">Setpoint <output id="o-set">0.50</output></label>
+      <input type="range" id="s-set" min="0.1" max="0.9" step="0.05" value="0.5"></div>
+    <div class="ctrl" data-only="static-dvfs"><label for="s-scale">Static duty scale <output id="o-scale">0.50</output></label>
+      <input type="range" id="s-scale" min="0.05" max="0.95" step="0.05" value="0.5"></div>
+    <div class="ctrl" data-only="power-gating"><label for="s-low">Gate off below <output id="o-low">0.15</output></label>
+      <input type="range" id="s-low" min="0.05" max="0.5" step="0.05" value="0.15"></div>
+  </div>
+
+  <div class="metrics" id="live-metrics"></div>
+  <canvas id="trace" height="560"></canvas>
+  <p class="note" id="trace-note"></p>
+</section>
+
+<!-- ============================================ 3. COMPARISON -->
+<section>
+  <h2>3. Four policies, paired seeds</h2>
+  <p>
+    Every policy runs on the <em>same</em> per-seed environment with the same component
+    noise, so differences are attributable to the policy alone. Intervals are percentile
+    bootstrap, 2000 resamples, which matters because <code>brownout</code> is bounded in
+    [0,&nbsp;1] and often degenerate — a normal approximation is invalid there.
+  </p>
+  <div class="run-row">
+    <button id="run-compare" class="btn">Run comparison</button>
+    <label class="inline"><input type="radio" name="nseeds" value="10" checked> 10 seeds (~3 s)</label>
+    <label class="inline"><input type="radio" name="nseeds" value="30"> 30 seeds (~9 s, matches the paper)</label>
+    <span class="progress" id="cmp-progress"></span>
+  </div>
+  <div id="cmp-out"></div>
+</section>
+
+<!-- ============================================ 4. THE CLIFF -->
+<section>
+  <h2>4. Why this is not just better tuning</h2>
+  <p>
+    The obvious objection is that a static duty cycle would match the regulator if you
+    tuned it properly. So sweep it. Static DVFS has exactly one knob, and sweeping it
+    reveals a discontinuity rather than a tradeoff curve.
+  </p>
+  <div class="run-row">
+    <button id="run-cliff" class="btn">Sweep the static duty scale</button>
+    <span class="progress" id="cliff-progress"></span>
+  </div>
+  <div id="cliff-out"></div>
+  <canvas id="cliff" height="380"></canvas>
+</section>
+
+<!-- ============================================ 5. HONESTY -->
+<section>
+  <h2>5. What this model assumes, and where it is weakest</h2>
+  <p>
+    This is a simulation. No hardware has been built. The assumptions below are
+    modelling conveniences, and the ones near the top are the ones most likely to change
+    the conclusion rather than just the numbers.
+  </p>
+  <ol class="assumptions">
+    <li>
+      <strong>Peak cell power is set to 320&nbsp;µW by default.</strong> The largest
+      <em>implanted</em> enzymatic glucose cell in the literature delivered about
+      39&nbsp;µW (Zebda et al., 2013); Rapoport et al. (2012) report roughly
+      180&nbsp;µW/cm² as a peak areal figure. 320&nbsp;µW therefore assumes a cell
+      substantially better than any demonstrated implant. Drag the power slider down to
+      40&nbsp;µW and the comfortable regime disappears — this is the single most
+      load-bearing parameter on the page.
+    </li>
+    <li>
+      <strong>Power and signal are treated as independent.</strong> The premise is that
+      glucose is both fuel and input. But if output power depends on glucose
+      concentration, then a weak signal means little power, exactly when computing may
+      matter most. The model does not capture that coupling.
+    </li>
+    <li>
+      <strong>The neuron model is idealised.</strong> Clean threshold, instantaneous
+      reset, linear stationary leak. Real devices switch softly, drift with temperature,
+      and vary from unit to unit.
+    </li>
+    <li>
+      <strong>Energy delivery is instantaneous and scalar.</strong> Real supply arrives
+      after a delay and is spatially structured. The supercapacitor has no self-discharge
+      and no series resistance here.
+    </li>
+    <li>
+      <strong>Device-to-device variation is zero.</strong> One controller setting is
+      assumed to transfer. For printed or flexible substrates that is optimistic.
+    </li>
+    <li>
+      <strong>The browser port is not bit-identical to the Python.</strong> NumPy's
+      PCG64 cannot be reproduced here, so this page uses mulberry32 with Box–Muller
+      normals. Structural results reproduce; static DVFS matches the reference to 0.05%,
+      and power gating — the only stateful policy, whose switching times depend on exact
+      threshold crossings — diverges by roughly 24%.
+    </li>
+  </ol>
+</section>
+
+<section>
+  <h2>6. Reproducing this</h2>
+  <pre><code>git clone https://github.com/Sanjana-sun/biobrain
+cd biobrain &amp;&amp; pip install -r requirements.txt
+
+python -m experiments.compare_policies   # 4 policies, 30 seeds, 95% CI
+python -m experiments.robustness         # bootstrap CIs + baseline-fairness sweep
+python -m experiments.tuning_cliff       # the discontinuity in section 4
+python -m benchmark.run_benchmark        # FashionMNIST under intermittent power</code></pre>
+</section>
+
+</main>
+
+<footer class="wrap">
+  <p>
+    <a href="https://github.com/Sanjana-sun/biobrain">Source</a> ·
+    Sanjana Sri Injamuri ·
+    <a href="mailto:injamuri.s@northeastern.edu">injamuri.s@northeastern.edu</a>
+  </p>
+  <p class="fine">
+    A simulation study. No hardware has been built, and no claim is made about a
+    physical device.
+  </p>
+</footer>
+
+<script src="engine.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

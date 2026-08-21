@@ -1,8 +1,22 @@
 """Metabolic regulator -- the novel core of BioBrain.
 
-Biological neural tissue does not brown out when fuel dips; it modulates its own
-activity. This regulator does two things no off-the-shelf neuromorphic system does
-together:
+Design note on the biological analogy, stated carefully.
+
+Neural signalling operates under a hard metabolic budget, and theory predicts that
+an energy-efficient code lowers its mean firing rate as the per-spike cost rises
+(Levy & Baxter, Neural Computation 1996; Lennie, Curr Biol 2003). Neurons also
+possess genuine closed-loop metabolic feedback: a neuron's own spiking depletes
+submembrane ATP via the Na/K pump, which opens K_ATP channels and hyperpolarizes
+it (Tanner et al., J Neurosci 2011).
+
+But we do NOT claim this regulator is what cortex does. Under physiological food
+restriction, mouse V1 *preserved* firing rate and instead cut AMPA conductance,
+paying the cost as a 32% broadening of orientation tuning (Padamsey et al.,
+Neuron 2022). Biology defended rate and sacrificed precision; we sacrifice rate to
+defend the reserve. That is an engineering choice, taken because a device with a
+hard brownout floor has a failure mode cortex does not: it stops entirely.
+
+This regulator does two things no off-the-shelf neuromorphic system does together:
 
 1. METABOLIC SELF-REGULATION: it converts the current energy reserve into a
    `rate_scale` (0..1) that throttles the spiking network. High reserve -> think fast.

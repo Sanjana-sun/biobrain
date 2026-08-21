@@ -8,7 +8,15 @@ static duty scale to see the tuning cliff.
 
 A brain-inspired (neuromorphic) computing unit that **powers itself from glucose and
 oxygen**, **senses that same fuel as its input**, and **automatically scales its own
-thinking speed to how much energy is available** — the way biological neural tissue does.
+thinking speed to how much energy is available**.
+
+> **On the biological analogy.** Spiking is metabolically expensive and theory
+> predicts efficient codes fire less as per-spike cost rises (Levy & Baxter 1996;
+> Lennie 2003), and neurons do have closed-loop metabolic feedback via K_ATP
+> channels (Tanner 2011). But cortex under food restriction *preserves* firing rate
+> and cuts synaptic gain instead, paying in coding precision (Padamsey et al.,
+> *Neuron* 2022). Throttling rate is our engineering choice, not biology's. See
+> [PAPER/related_work.md](PAPER/related_work.md) §4.
 
 This repo is the **software half** of a hybrid prototype: a physically-grounded
 simulation of the whole system. The **hardware half** (a real biofuel cell powering a

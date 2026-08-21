@@ -154,6 +154,179 @@ per-inference leakage energy; and load-correlated SoC measurement error from IR 
 
 ---
 
+## FINAL VERDICT after all four sweeps
+
+The two remaining sweeps returned harder findings than the first two. Stated plainly:
+**as a simulation paper, this has no novel contribution left.** Every
+simulation-level claim is owned by prior art. What survives is entirely in the
+hardware.
+
+### The near-kill: ASPEN
+
+**Calle-Ortiz, Guan, Ganesan & Nguyen (2025). "ASPEN: Adaptive Spiking with
+Plasticity for Energy Aware Neuromorphic Systems."**
+[arXiv:2508.11689](https://arxiv.org/abs/2508.11689), Aug 2025. Full text read.
+Verbatim from the paper:
+
+> "ASPEN dynamically adjusts the firing thresholds of spiking neurons during
+> inference, enabling real-time control over spiking activity in response to
+> available energy... an **energy monitor** informs an **Energy-Aware Threshold
+> Adaptation** module that modulates neuron thresholds based on the **current
+> energy budget**." ... "threshold modulation enables **continuous and graceful**
+> control within a single model."
+
+Validated on SynSense Xylo IMU hardware, motivated by "energy-harvesting
+environments" and "battery-free wearable devices." **This is our mechanism, our
+actuator, our "graded not binary" framing, one year earlier, in silicon.**
+
+**The one and only gap:** ASPEN's energy budget is an *exogenous scalar* in a
+`Select(E)` function, and the evaluation is an **open-loop threshold sweep**
+(theta = 0.6 to 2.4 in 0.2 steps) that "simulates varying energy constraints."
+No harvester. No supercapacitor. No measured state of charge. No closed loop.
+
+### The crux argument is not just unoriginal, it is contradicted
+
+**Shresthamali, Kondo & Nakamura (2017). ACM TECS 17(4), Article 39.** Verbatim:
+
+> "The **Naive** policy is the simplest adaptive policy. It is battery-centric in
+> that **the duty cycle is proportional to the battery reserve level**... While
+> this policy is simple to implement, **it is not very intelligent**."
+
+They measure it: the Naive policy has the **worst** RMS deviation from energy
+neutrality of every policy tested, >23% against 3.46% for their RL policy.
+
+So reserve-proportional control is (a) the field's named strawman baseline, and
+(b) known to *lose*. The field's consensus is that **predictive** control beats
+both graded and threshold. Our paper argues graded beats threshold, which is the
+wrong axis entirely.
+
+**Buchli et al. (SenSys 2014)** [10.1145/2668332.2668333](https://doi.org/10.1145/2668332.2668333)
+says it directly of Vigorito and of PID-on-supercapacitor: "both of these
+approaches suffer from **high duty-cycle variability**, and rely on a
+well-performing battery State-of-Charge approximation algorithm." Measured
+duty-cycle variance three orders of magnitude worse than their model-based scheme.
+
+### The control law, exactly, from 2007 and 2012
+
+- **Vigorito, Ganesan & Barto (2007), IEEE SECON, best paper.**
+  [10.1109/SAHCN.2007.4292814](https://doi.org/10.1109/SAHCN.2007.4292814)
+  Closed-form law `u_t = (y* - (a+c)y_t + c y*) / b` where `y_t` **is** battery
+  state of charge and `u_t` **is** duty cycle. Continuous, monotone, affine in
+  instantaneous reserve, gains self-tuned online. In their words: "using only the
+  current battery level of the node to make duty-cycling decisions." Known in that
+  literature as **ENO-Max**.
+- **Le, Sentieys, Berder, Pegatoquet & Belleudy (2012), IEEE GreenCom.**
+  [10.1109/GreenCom.2012.107](https://doi.org/10.1109/GreenCom.2012.107)
+  A **PID controller** on supercapacitor voltage setting the node's wake-up
+  period. The literal "PID on the capacitor sets the rate" claim.
+
+Also anticipating the continuous reserve-to-rate map: **Ait Aoudia et al. (2016)**
+Fuzzyman [10.1109/ICC.2016.7510767](https://doi.org/10.1109/ICC.2016.7510767);
+**Peng & Low (2014)** P-FREEN [10.1016/j.adhoc.2013.08.015](https://doi.org/10.1016/j.adhoc.2013.08.015);
+**Moser et al. (2007/2010)** piecewise-affine state feedback
+[10.1109/TC.2009.158](https://doi.org/10.1109/TC.2009.158); and
+**REHASH (Bakar et al., IMWUT 2021)** [10.1145/3478077](https://doi.org/10.1145/3478077),
+which defines capacitor voltage as a proportional "signal" driving task
+performance modulation, i.e. a framework in which our policy is one expressible
+instance.
+
+Reserve-state feedback setting neural computation depth: **Bullo, Jardak,
+Carnelli & Gunduz (2024)** [arXiv:2411.02471](https://arxiv.org/abs/2411.02471) —
+"the model to be employed, or the exit point is then dynamically chosen **based on
+the energy storage and harvesting process states**." Discrete actions, DNN.
+
+Reserve-voltage-driven continuous scaling on a real batteryless device:
+**D2VFS, Maioli et al., ACM TOSN 2025** [10.1145/3714470](https://doi.org/10.1145/3714470).
+Scales V/f rather than activity, which is the only daylight.
+
+### The actuator may not even work
+
+**"The Sparsity Ceiling: Where Spiking Networks Can and Cannot Trade Activity for
+Energy" (2026)** [arXiv:2607.26648](https://arxiv.org/abs/2607.26648) finds "the
+energy dividend of sparsity is not a property of SNNs but of the task":
+feed-forward perception reaches ~5% firing with no accuracy loss, but recurrent
+models plateau near 50% despite regularization targeting 10%. **Proportional
+energy savings do not follow proportional activity reductions.** If actuator
+authority saturates, a graded controller degenerates into the threshold
+controller it claims to beat. Any claim now requires a **measured
+actuator-authority curve**.
+
+### Resolved: the standing TODO
+
+**arXiv 2503.06663 is published.** Islam, Wei, Banerjee & Pan (2025),
+"Energy-Adaptive Checkpoint-Free Intermittent Inference for Low Power Energy
+Harvesting Systems," **ISQED 2025**, DOI
+[10.1109/ISQED65160.2025.11014335](https://doi.org/10.1109/ISQED65160.2025.11014335),
+all four authors at UT San Antonio. Full text read: it is a **CNN**, the words
+"spike" and "neuromorphic" appear zero times, its low-energy adaptation is
+**binary** (full model vs concentrated weights), and energy enters only as a
+threshold admission test. **Not a threat.** Cite it and move on.
+
+### The one genuine opening
+
+**EDLIF and its successor** — Jaras et al. (2025), PLOS Comp Biol 21(6):e1013148
+[10.1371/journal.pcbi.1013148](https://doi.org/10.1371/journal.pcbi.1013148), and
+the 2021 EDLIF paper — have ATP availability **continuously** modulating
+post-spike repolarization and hence firing rate. Simulation only, abstract ATP
+pool. **No hardware implementation of EDLIF exists.** Also: an arXiv full-text
+query for `"energy harvesting" AND "spiking neural network"` returned **zero**
+results, and no biofuel-cell-powered artificial neuron or synapse was found at all.
+
+---
+
+## What this means, concretely
+
+**1. The simulation paper is dead.** ASPEN owns the mechanism; Vigorito, Le,
+Kansal, Fuzzyman and P-FREEN own the control law; Shresthamali shows the law
+loses; REACT and Zhan own the capacitance result; SEENN, DT-SNN, Dynamic
+Confidence, SpikeCP, MTT and NESTformer collectively own "scale spiking activity
+to save energy." No amount of extra simulation closes this.
+
+**2. The remaining contribution is entirely the hardware.** The narrowest
+defensible claim:
+
+> A **closed-loop** controller in which the *measured terminal voltage* of a
+> physical energy reserve — a supercapacitor charged by a **biofuel cell** — is the
+> controlled variable and the SNN's **firing rate** is the actuator, with
+> **operational stability** (energy-neutral, brownout-free availability) as the
+> objective rather than accuracy-per-joule. Demonstrated on real hardware, against
+> a threshold baseline **and a predictive baseline**, with a **measured
+> actuator-authority curve** showing the firing-rate knob has the dynamic range to
+> regulate the reserve.
+
+Four conditions, each closing a specific gap: (i) the reserve is physically
+measured, not an exogenous budget — vs ASPEN; (ii) the network is spiking and the
+actuator is activity, not V/f or model selection — vs D2VFS and Bullo; (iii) the
+loop runs at inference — vs Energy-Aware Spike Budgeting; (iv) the source is a
+biofuel cell, the one harvester with no artificial-neuron prior art.
+
+Cleanest one-sentence framing: **substitute a real supercapacitor for the
+simulated ATP pool in an EDLIF-style continuous energy-to-rate law, on hardware.**
+
+**3. Three things must be added before any submission:**
+- A **predictive baseline**. Without it the comparison is against exactly the two
+  policies the field already knows are inferior.
+- A **measured actuator-authority curve** (the Sparsity Ceiling objection).
+- **Duty-cycle variance and SoC-estimation sensitivity**, which is what Buchli
+  measured proportional control losing on.
+
+**4. Rename and reposition.** The mechanism is **state-of-charge droop control**
+(Lu et al. 2014). Drop "homeostatic," which requires integral feedback (Briat et
+al. 2016). The contribution is a control-systems and co-design result, not an
+adaptive-SNN result.
+
+## Coverage gaps, stated honestly
+
+Both sweeps exhausted their 200-call web-search budgets. **Not checked:** Google
+Patents systematically; paywalled proceedings for **ENSsys, ISLPED, ICONS, SenSys
+and EWSN** (ENSsys and ISLPED are the highest-risk unchecked venues for exactly
+this idea); and **embodied-robotics work where battery level drives an SNN through
+an artificial-metabolism or drive model**, which is a plausible place for a direct
+hit. Also unrun: the query "closed-loop supercapacitor SoC feedback controlling a
+spiking network." Run all of these before writing anything.
+
+---
+
 ## What actually survives, and the better paper hiding in this
 
 **The strongest finding in the repo is not any of the three claims.** It is the

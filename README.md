@@ -1,5 +1,11 @@
 # BioBrain
 
+**[Interactive demo →](https://sanjana-sun.github.io/biobrain/)** — the simulation
+runs live in the browser: adjust cell power, store capacity and regulator
+parameters, run the four-policy comparison with bootstrap CIs, and sweep the
+static duty scale to see the tuning cliff.
+
+
 A brain-inspired (neuromorphic) computing unit that **powers itself from glucose and
 oxygen**, **senses that same fuel as its input**, and **automatically scales its own
 thinking speed to how much energy is available** — the way biological neural tissue does.

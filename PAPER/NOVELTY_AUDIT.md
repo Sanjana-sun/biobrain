@@ -362,3 +362,91 @@ non-forecastable signal, and it is not in any of the prior art above.
 **One query the sweep could not run before exhausting its budget:** "closed-loop
 supercapacitor SoC feedback controlling a spiking network." Run that before
 submitting. It is the exact phrasing that would surface a direct hit.
+
+---
+
+# THE WHITE SPACE, MAPPED (final sweep)
+
+A fifth sweep split the claim along its two real axes and located the gap exactly.
+
+| | Abstract / simulated budget | **Real measured buffer** |
+|---|---|---|
+| Conventional net, discrete modes | Bullo 2411.02471 | 2004.11293 · ISQED 2503.06663 · FreeML 2405.10426 |
+| Conventional net, continuous | NExUME 2408.13696 (training-time) | — |
+| Spiking, discrete modes | DBS 2606.28600 · SPARQ · NeuCODEX | — |
+| **Spiking, continuous** | **ASPEN 2508.11689** · 2602.12236 (train-only) · 2507.07874 (biology) | **EMPTY** |
+
+**The bottom-right cell is empty.** Corroborating nulls from the same sweep:
+- **0 of 40** arXiv Loihi power/energy papers close a loop between a harvester or
+  energy buffer and runtime behaviour. All treat energy as a measured *output*,
+  never a sensed *input*. Same for DYNAP-SE2, Speck, ReckOn.
+- **0 of 24** energy-harvesting + RL duty-cycling papers use a spiking network.
+- SpiNNaker2's DVFS runs the **inverse** direction: spiking activity sets power.
+
+**Three caveats that keep this narrow:**
+1. **ASPEN is one wire away.** Its Fig. 6 already draws an "energy monitor" block,
+   and its conclusion names "intermittently powered" and "batteryless" devices.
+   Grep of the full text: zero occurrences of supercapacitor, capacitor,
+   state-of-charge, or buffer voltage. But "we read the capacitor" is **not enough
+   differentiation** on its own.
+2. **NExUME already publishes a continuous energy-to-activity law**:
+   `d_i = d_max(1 - E_b/E_max)` for per-layer dropout, and it already reads an
+   on-board harvesting capacitor at inference — just to schedule, not to modulate.
+   So the continuous-map idea is anticipated in a conventional net.
+3. **Bullo et al. already use harvest-process state, not just level**, so adding a
+   dV/dt term is a weak differentiator.
+
+## What is actually defensible, in descending strength
+
+- **(a) A closed-loop control law with brownout and stability guarantees**, where
+  firing rate is the actuator and buffer voltage the plant output. None of the
+  above makes a control-theoretic claim. This is the strongest option.
+- **(b) Physical coupling**: the harvested rail directly sets neuron bias or
+  threshold, so modulation is analog and free rather than a digital threshold
+  write. Nothing does this at network level.
+- **(c) A survival objective** — never brown out, maximize uptime — instead of the
+  universal accuracy-under-budget framing.
+- **(d) Self-regulation with no external setpoint.** No exogenous `E`, no
+  hand-set `r_target`, no offline Pareto front. ASPEN, Spike Budgeting, and SPARQ
+  all require one.
+
+**(c) and (d) are what our system already does.** The regulator's setpoint is
+internal to the reserve, and the objective is brownout avoidance, not
+accuracy-per-joule. That is the reframe: not "graded beats threshold," but
+"closed-loop survival control on a measured reserve, with no external budget."
+
+## One useful biological correction
+
+**Hung, Schwartz, Cooper & Alexander (2025), "Homeostatic Adaptation of Optimal
+Population Codes under Metabolic Stress"** [arXiv:2507.07874](https://arxiv.org/abs/2507.07874)
+ties ATP availability to resting potential and leak conductance, derives "an
+optimal decay path to produce the least-noisy spike rate possible at a given
+cellular energy budget," and reproduces an observed cortical **"low power mode."**
+
+This partially offsets the Padamsey finding in §4.4: there is a modelled and
+reportedly observed low-power regime. Note the tension honestly — Padamsey
+measured rate *preserved* and precision sacrificed; Hung et al. model an optimal
+rate reduction. Both should be cited, and the tension named rather than resolved
+in our favour.
+
+It also means "energy level should set firing rate" is now received wisdom in
+computational neuroscience, which is a further argument for locating the novelty
+in the **engineered closed loop on a measured physical reserve**, not the principle.
+
+## Two papers to read in full before writing anything
+
+1. **ASPEN** [arXiv:2508.11689](https://arxiv.org/abs/2508.11689). The primary
+   obstacle. Extracted text is in this session's scratchpad as `aspen.txt`.
+2. **NExUME** [arXiv:2408.13696](https://arxiv.org/abs/2408.13696). Owns the
+   continuous law in a conventional net, and reads a real capacitor.
+
+## Coverage gaps across all five sweeps
+
+Every sweep exhausted its 200-call search budget. **Unchecked:** Google Patents;
+paywalled **ENSsys, ISLPED, ICONS, SenSys, EWSN** proceedings (ENSsys and ISLPED
+are the highest-risk); **embodied-robotics work where battery level drives an SNN
+through an artificial-metabolism or drive model**; and the Springer CubeSat TinyML
+SoC-MDP scheduler (doi:10.1007/s44291-026-00179-x), behind auth. The Loihi and
+EH-RL nulls are **abstract-level** nulls from the arXiv API, so work that mentions
+harvesters only in the body could have been missed — note that ASPEN itself does
+not say "energy harvesting" in its abstract.

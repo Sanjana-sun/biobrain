@@ -450,3 +450,63 @@ SoC-MDP scheduler (doi:10.1007/s44291-026-00179-x), behind auth. The Loihi and
 EH-RL nulls are **abstract-level** nulls from the arXiv API, so work that mentions
 harvesters only in the body could have been missed — note that ASPEN itself does
 not say "energy harvesting" in its abstract.
+
+---
+
+# ADDENDUM: the paper that makes the biofuel cell load-bearing
+
+**"Perpetual edge intelligence: adaptive hybrid energy harvesting and
+reinforcement-learning-based TinyML for autonomous IoT sensors." *Discover
+Electronics* (2026).**
+[10.1007/s44291-026-00186-y](https://doi.org/10.1007/s44291-026-00186-y)
+
+PV + RF harvesting with **supercapacitor buffering**, and an RL controller that
+**observes energy state via storage/buffer voltage** and adapts **inference
+frequency**, achieving >95% energy-neutral operation. Non-spiking (TinyML).
+
+**This is the closest system-level match found in any sweep, and it changes the
+strategy.** Measured-supercapacitor-voltage to inference-rate regulation under
+harvesting is published, in 2026. The only remaining differences are that the
+network is spiking and the source is a biofuel cell.
+
+**Consequence: the biofuel cell must be load-bearing, not incidental.** If it is
+presented as an interchangeable power supply, a reviewer substitutes a solar cell
+and lands on this paper. The argument has to be that the biofuel cell's **source
+impedance and slow recovery dynamics** are *why* graded control is required — a
+harvester too weak to refill the buffer after a gating event — rather than one
+harvester among several.
+
+# THE REFRAME, in its strongest form
+
+Drop the "novel controller" framing entirely. The conceptual contribution is gone.
+What is left is a **measurement and systems paper**:
+
+> The first closed-loop, reserve-regulated SNN on a biofuel-cell harvester, with an
+> honest characterization of when graded regulation wins and when it loses.
+
+**Concede the performance argument.** Shresthamali (TECS 2017) already measured
+reserve-proportional control losing to forecast-based policies, and Buchli (SenSys
+2014) measured it at three orders of magnitude worse duty-cycle variance. Do not
+fight that. **Reframe the advantage as cost and simplicity, not optimality:**
+graded reserve control needs **no forecast, no NVM checkpointing, and no model
+zoo**. At sub-milliwatt scale, where there is no budget for prediction or for
+storing multiple models, that is a real argument. It is also a *different* claim
+from the one the field has already refuted.
+
+## Four conditions, all of which must hold
+
+1. **Actually close the loop.** ASPEN's escape hatch is an exogenous budget and an
+   open-loop threshold sweep. *If you also sweep, you have written ASPEN with a
+   supercapacitor in the figure.* Regulate a measured reserve or there is nothing.
+2. **Beat threshold gating on measured hardware**, and concede to forecast-based
+   policies rather than claiming to beat them.
+3. **Answer the Sparsity Ceiling objection** with a measured actuator-authority
+   curve showing the task has enough firing-rate dynamic range for graded control
+   to buy proportional energy.
+4. **Make the biofuel cell the reason**, per the addendum above.
+
+## Venue
+
+ICONS, EWSN, or a neuromorphic-systems venue, as a systems and measurement paper.
+"Graded homeostatic reserve-feedback control for SNNs" as a conceptual
+contribution is not publishable anywhere.
